@@ -1,12 +1,16 @@
 use {
     crate::{
-        commands::CommandExec, context::ScillaContext, error::ScillaResult,
-        misc::helpers::lamports_to_sol, prompt::prompt_data, ui::show_spinner,
+        commands::CommandExec,
+        context::ScillaContext,
+        error::ScillaResult,
+        misc::helpers::lamports_to_sol,
+        prompt::prompt_data,
+        ui::{print_error, show_spinner},
     },
     comfy_table::{Cell, Table, presets::UTF8_FULL},
     console::style,
     inquire::Select,
-    solana_nonce::{state::Data, versions::Versions},
+    solana_nonce::versions::Versions,
     solana_pubkey::Pubkey,
     solana_rpc_client_api::config::{RpcLargestAccountsConfig, RpcLargestAccountsFilter},
     solana_signature::Signature,
@@ -58,13 +62,15 @@ impl AccountCommand {
                 show_spinner(self.description(), request_sol_airdrop(ctx)).await?;
             }
             AccountCommand::ConfirmTransaction => {
-                confirm_transaction(ctx).await?;
+                let signature: Signature = prompt_data("Enter transaction signature:")?;
+                show_spinner(self.description(), confirm_transaction(ctx, &signature)).await?;
             }
             AccountCommand::LargestAccounts => {
                 show_spinner(self.description(), fetch_largest_accounts(ctx)).await?;
             }
             AccountCommand::NonceAccount => {
-                fetch_nonce_account(ctx).await?;
+                let pubkey: Pubkey = prompt_data("Enter nonce account pubkey:")?;
+                show_spinner(self.description(), fetch_nonce_account(ctx, &pubkey)).await?;
             }
             AccountCommand::GoBack => {
                 return Ok(CommandExec::GoBack);
@@ -86,11 +92,7 @@ async fn request_sol_airdrop(ctx: &ScillaContext) -> anyhow::Result<()> {
             );
         }
         Err(err) => {
-            eprintln!(
-                "{} {}",
-                style("Airdrop failed:").red().bold(),
-                style(err).red()
-            );
+            print_error(format!("Airdrop failed: {}", err));
         }
     }
 
@@ -122,30 +124,8 @@ async fn fetch_account_balance(ctx: &ScillaContext, pubkey: &Pubkey) -> anyhow::
     Ok(())
 }
 
-async fn confirm_transaction(ctx: &ScillaContext) -> anyhow::Result<()> {
-    let (signature, confirmed) = loop {
-        let signature: Signature = prompt_data("Enter transaction signature:")?;
-
-        match show_spinner("Confirming transaction", async {
-            ctx.rpc()
-                .confirm_transaction(&signature)
-                .await
-                .map_err(|e| anyhow::anyhow!(e))
-        })
-        .await
-        {
-            Ok(confirmed) => break (signature, confirmed),
-            Err(e) => {
-                println!(
-                    "\n{}\n",
-                    style(format!("Error: Failed to confirm transaction - {}", e))
-                        .red()
-                        .bold()
-                );
-                continue;
-            }
-        }
-    };
+async fn confirm_transaction(ctx: &ScillaContext, signature: &Signature) -> anyhow::Result<()> {
+    let confirmed = ctx.rpc().confirm_transaction(signature).await?;
 
     let status = if confirmed {
         "Confirmed"
@@ -224,57 +204,20 @@ async fn fetch_largest_accounts(ctx: &ScillaContext) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn fetch_nonce_account(ctx: &ScillaContext) -> anyhow::Result<()> {
-    let (pubkey, account, data) = loop {
-        let pubkey: Pubkey = prompt_data("Enter nonce account pubkey:")?;
+async fn fetch_nonce_account(ctx: &ScillaContext, pubkey: &Pubkey) -> anyhow::Result<()> {
+    let account = ctx.rpc().get_account(pubkey).await?;
 
-        let account = match show_spinner("Fetching nonce account", async {
-            ctx.rpc()
-                .get_account(&pubkey)
-                .await
-                .map_err(|e| anyhow::anyhow!(e))
-        })
-        .await
-        {
-            Ok(acc) => acc,
-            Err(_e) => {
-                println!(
-                    "\n{}\n",
-                    style(format!("Error: Account not found - {}", pubkey))
-                        .red()
-                        .bold()
-                );
-                continue;
-            }
-        };
+    let versions = bincode::deserialize::<Versions>(&account.data)
+        .map_err(|e| anyhow::anyhow!("Failed to deserialize nonce account data: {}", e))?;
 
-        let nonce_data: Option<Data> = bincode::deserialize::<Versions>(&account.data)
-            .ok()
-            .and_then(|versions| match versions.state() {
-                solana_nonce::state::State::Initialized(data) => Some(data.clone()),
-                _ => None,
-            });
-
-        // Check if it's a nonce account, retry if not
-        match nonce_data {
-            Some(d) => break (pubkey, account, d),
-            None => {
-                println!(
-                    "\n{}\n",
-                    style("Error: This account is not an initialized nonce account")
-                        .red()
-                        .bold()
-                );
-                continue;
-            }
+    let data = match versions.state() {
+        solana_nonce::state::State::Initialized(data) => data.clone(),
+        _ => {
+            return Err(anyhow::anyhow!(
+                "This account is not an initialized nonce account"
+            ));
         }
     };
-
-    let min_balance = ctx
-        .rpc()
-        .get_minimum_balance_for_rent_exemption(80)
-        .await
-        .unwrap_or(0);
 
     let mut table = Table::new();
     table
@@ -305,19 +248,8 @@ async fn fetch_nonce_account(ctx: &ScillaContext) -> anyhow::Result<()> {
             Cell::new(format!("{}", account.rent_epoch)),
         ])
         .add_row(vec![
-            Cell::new("Minimum Balance Required"),
-            Cell::new(format!("{:.8} SOL", lamports_to_sol(min_balance))),
-        ])
-        .add_row(vec![
             Cell::new("Nonce blockhash"),
             Cell::new(data.blockhash().to_string()),
-        ])
-        .add_row(vec![
-            Cell::new("Fee"),
-            Cell::new(format!(
-                "{} lamports per signature",
-                data.get_lamports_per_signature()
-            )),
         ])
         .add_row(vec![
             Cell::new("Authority"),
