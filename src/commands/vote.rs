@@ -19,11 +19,23 @@ pub enum VoteCommand {
 }
 
 impl VoteCommand {
+    pub fn spinner_msg(&self) -> &'static str {
+        match self {
+            VoteCommand::CreateVoteAccount => "Creating vote account…",
+            VoteCommand::AuthorizeVoter => "Authorizing voter…",
+            VoteCommand::WithdrawFromVoteAccount => "Withdrawing SOL from vote account…",
+            VoteCommand::ShowVoteAccount => "Fetching vote account details…",
+            VoteCommand::GoBack => "Going back…",
+        }
+    }
+}
+
+impl VoteCommand {
     pub async fn process_command(&self, ctx: &ScillaContext) -> ScillaResult<()> {
         match self {
             VoteCommand::ShowVoteAccount => {
                 let pubkey: Pubkey = prompt_data("Enter Vote Account Pubkey:")?;
-                show_spinner("Show Vote Account", show_vote_account(ctx, &pubkey)).await?;
+                show_spinner(self.spinner_msg(), show_vote_account(ctx, &pubkey)).await?;
             }
             VoteCommand::CreateVoteAccount => todo!(),
             VoteCommand::AuthorizeVoter => todo!(),
@@ -99,7 +111,7 @@ async fn show_vote_account(ctx: &ScillaContext, pubkey: &Pubkey) -> anyhow::Resu
                     ),
                 ]);
 
-            println!("\n{}", style("VOTE ACCOUNT INFORMATION").green().bold());
+            println!("\n{}", style("VOTE ACCOUNT INFO").green().bold());
             println!("{}", table);
         }
         None => {

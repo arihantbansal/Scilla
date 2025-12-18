@@ -24,23 +24,23 @@ pub enum AccountCommand {
     Balance,
     Transfer,
     Airdrop,
-    ConfirmTransaction,
+    CheckTransactionConfirmation,
     LargestAccounts,
     NonceAccount,
     GoBack,
 }
 
 impl AccountCommand {
-    pub fn description(&self) -> &'static str {
+    pub fn spinner_msg(&self) -> &'static str {
         match self {
-            AccountCommand::FetchAccount => "Fetch Account",
-            AccountCommand::Balance => "Check SOL balance",
-            AccountCommand::Transfer => "Send SOL to another wallet",
-            AccountCommand::Airdrop => "Request devnet/testnet SOL",
-            AccountCommand::ConfirmTransaction => "Check if a transaction landed",
-            AccountCommand::LargestAccounts => "See the biggest accounts on cluster",
-            AccountCommand::NonceAccount => "Inspect or manage durable nonces",
-            AccountCommand::GoBack => "Go back",
+            AccountCommand::FetchAccount => "Fetching account…",
+            AccountCommand::Balance => "Checking SOL balance…",
+            AccountCommand::Transfer => "Sending SOL to another wallet…",
+            AccountCommand::Airdrop => "Requesting SOL on devnet/testnet…",
+            AccountCommand::CheckTransactionConfirmation => "Checking transaction confirmation…",
+            AccountCommand::LargestAccounts => "Fetching largest accounts on the cluster…",
+            AccountCommand::NonceAccount => "Inspecting or managing durable nonces…",
+            AccountCommand::GoBack => "Going back…",
         }
     }
 }
@@ -50,28 +50,28 @@ impl AccountCommand {
         match self {
             AccountCommand::FetchAccount => {
                 let pubkey: Pubkey = prompt_data("Enter Pubkey:")?;
-                show_spinner(self.description(), fetch_acc_data(ctx, &pubkey)).await?;
+                show_spinner(self.spinner_msg(), fetch_acc_data(ctx, &pubkey)).await?;
             }
             AccountCommand::Balance => {
                 let pubkey: Pubkey = prompt_data("Enter Pubkey :")?;
-                show_spinner(self.description(), fetch_account_balance(ctx, &pubkey)).await?;
+                show_spinner(self.spinner_msg(), fetch_account_balance(ctx, &pubkey)).await?;
             }
             AccountCommand::Transfer => {
-                // show_spinner(self.description(), todo!()).await?;
+                // show_spinner(self.spinner_msg(), todo!()).await?;
             }
             AccountCommand::Airdrop => {
-                show_spinner(self.description(), request_sol_airdrop(ctx)).await?;
+                show_spinner(self.spinner_msg(), request_sol_airdrop(ctx)).await?;
             }
-            AccountCommand::ConfirmTransaction => {
+            AccountCommand::CheckTransactionConfirmation => {
                 let signature: Signature = prompt_data("Enter transaction signature:")?;
-                show_spinner(self.description(), confirm_transaction(ctx, &signature)).await?;
+                show_spinner(self.spinner_msg(), confirm_transaction(ctx, &signature)).await?;
             }
             AccountCommand::LargestAccounts => {
-                show_spinner(self.description(), fetch_largest_accounts(ctx)).await?;
+                show_spinner(self.spinner_msg(), fetch_largest_accounts(ctx)).await?;
             }
             AccountCommand::NonceAccount => {
                 let pubkey: Pubkey = prompt_data("Enter nonce account pubkey:")?;
-                show_spinner(self.description(), fetch_nonce_account(ctx, &pubkey)).await?;
+                show_spinner(self.spinner_msg(), fetch_nonce_account(ctx, &pubkey)).await?;
             }
             AccountCommand::GoBack => {
                 return Ok(CommandExec::GoBack);

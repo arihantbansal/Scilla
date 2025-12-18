@@ -9,12 +9,12 @@ pub enum ConfigCommand {
 }
 
 impl ConfigCommand {
-    pub fn description(&self) -> &'static str {
+    pub fn spinner_msg(&self) -> &'static str {
         match self {
-            ConfigCommand::Show => "Display current Scilla configuration",
-            ConfigCommand::Generate => "Set up a new Scilla configuration",
-            ConfigCommand::Edit => "Modify existing Scilla configuration",
-            ConfigCommand::GoBack => "Go back",
+            ConfigCommand::Show => "Displaying current Scilla configuration…",
+            ConfigCommand::Generate => "Generating new Scilla configuration…",
+            ConfigCommand::Edit => "Editing existing Scilla configuration…",
+            ConfigCommand::GoBack => "Going back…",
         }
     }
 }

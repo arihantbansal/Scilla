@@ -15,17 +15,17 @@ pub enum StakeCommand {
 }
 
 impl StakeCommand {
-    pub fn description(&self) -> &'static str {
+    pub fn spinner_msg(&self) -> &'static str {
         match self {
-            StakeCommand::Create => "Create a new stake account",
-            StakeCommand::Delegate => "Delegate stake to a validator",
-            StakeCommand::Deactivate => "Begin stake cooldown",
-            StakeCommand::Withdraw => "Withdraw SOL from deactivated stake",
-            StakeCommand::Merge => "Combine two stake accounts",
-            StakeCommand::Split => "Split stake into multiple accounts",
-            StakeCommand::Show => "Display stake account details",
-            StakeCommand::History => "View stake account history",
-            StakeCommand::GoBack => "Go back",
+            StakeCommand::Create => "Creating new stake account…",
+            StakeCommand::Delegate => "Delegating stake to validator…",
+            StakeCommand::Deactivate => "Deactivating stake (cooldown starting)…",
+            StakeCommand::Withdraw => "Withdrawing SOL from deactivated stake…",
+            StakeCommand::Merge => "Merging stake accounts…",
+            StakeCommand::Split => "Splitting stake into multiple accounts…",
+            StakeCommand::Show => "Fetching stake account details…",
+            StakeCommand::History => "Fetching stake account history…",
+            StakeCommand::GoBack => "Going back…",
         }
     }
 }
